@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drying Day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one narrow column. Verdict first, then the hour strip for the day, then the three-day outlook. */
+:root{
+  --bg:#edf2f4; --surface:#ffffff; --ink:#14262e; --muted:#5a6d75; --line:#d5dee2;
+  --accent:#1f6f8b; --accent-ink:#ffffff;
+  --good:#2b8a57; --ok:#c48a1a; --poor:#9aa8ae; --bad:#b4483c;
+  --good-wash:#e2f2e9; --ok-wash:#f8eed8; --bad-wash:#f6e3e0;
+  --display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1b21; --surface:#18282f; --ink:#e8f0f2; --muted:#95a8b0; --line:#2b3d45;
+    --accent:#5bb4d1; --accent-ink:#0b1a20;
+    --good:#56c58a; --ok:#e3b04b; --poor:#55676f; --bad:#e2776a;
+    --good-wash:#173327; --ok-wash:#3a2f14; --bad-wash:#3c1f1b;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1b21; --surface:#18282f; --ink:#e8f0f2; --muted:#95a8b0; --line:#2b3d45;
+  --accent:#5bb4d1; --accent-ink:#0b1a20;
+  --good:#56c58a; --ok:#e3b04b; --poor:#55676f; --bad:#e2776a;
+  --good-wash:#173327; --ok-wash:#3a2f14; --bad-wash:#3c1f1b;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+main{max-width:560px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:16px}
+h1{font-family:var(--display);font-weight:700;font-size:28px;margin:0;letter-spacing:-.01em}
+.lede{margin:4px 0 0;color:var(--muted)}
+form{display:flex;gap:8px;flex-wrap:wrap}
+label.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+input[type=text]{flex:1 1 180px;min-width:0;font:600 18px var(--body);letter-spacing:.04em;text-transform:uppercase;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink)}
+input::placeholder{text-transform:none;letter-spacing:0;font-weight:400;color:var(--muted)}
+button{font:600 16px var(--body);cursor:pointer;border-radius:10px;border:0}
+button.go{padding:12px 18px;background:var(--accent);color:var(--accent-ink)}
+button.go[disabled]{opacity:.6;cursor:wait}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.msg{padding:12px 14px;border-radius:10px;background:var(--bad-wash);border-left:4px solid var(--bad)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.verdict{border-left:6px solid var(--poor)}
+.verdict.good{border-left-color:var(--good);background:var(--good-wash)}
+.verdict.ok{border-left-color:var(--ok);background:var(--ok-wash)}
+.verdict.bad{border-left-color:var(--bad);background:var(--bad-wash)}
+.place{font-size:14px;color:var(--muted);margin:0 0 6px}
+.verdict h2{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.1;margin:0 0 8px;text-wrap:balance}
+.verdict p{margin:0}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px}
+.fact b{display:block;font-family:var(--display);font-size:20px;font-variant-numeric:tabular-nums}
+.fact span{font-size:12.5px;color:var(--muted)}
+.tabs{display:flex;gap:6px}
+.tabs button{flex:1;padding:9px 6px;background:transparent;color:var(--muted);border:1.5px solid var(--line);font-size:14px}
+.tabs button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+h3{font-family:var(--display);font-size:17px;margin:0 0 4px}
+.sub{font-size:13.5px;color:var(--muted);margin:0 0 12px}
+.strip{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;align-items:end;height:120px}
+.bar{position:relative;height:100%;display:flex;align-items:flex-end;background:transparent;padding:0;border-radius:4px}
+.bar i{display:block;width:100%;border-radius:4px 4px 2px 2px;background:var(--poor);min-height:4px}
+.bar.good i{background:var(--good)} .bar.ok i{background:var(--ok)} .bar.block i{background:var(--bad);opacity:.55} .bar.dark i{background:var(--line)}
+.bar.win::after{content:"";position:absolute;left:0;right:0;bottom:-7px;height:3px;background:var(--ink);border-radius:2px}
+.bar.sel{outline:2px solid var(--accent);outline-offset:1px}
+.bar.past{opacity:.35}
+.axis{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:3px;margin-top:12px;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.axis span{text-align:left;white-space:nowrap;overflow:visible}
+.hour{margin:12px 0 0;font-size:14px;padding-top:10px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.key{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.key span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;background:var(--poor);vertical-align:-1px}
+.key .g::before{background:var(--good)} .key .o::before{background:var(--ok)} .key .b::before{background:var(--bad);opacity:.55}
+.key .w::before{height:3px;background:var(--ink);vertical-align:3px}
+.days{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.days li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.days li:first-child{border-top:0;padding-top:0}
+.pill{font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:99px;white-space:nowrap;align-self:center}
+.pill.good{background:var(--good-wash);color:var(--good)} .pill.ok{background:var(--ok-wash);color:var(--ok)} .pill.bad{background:var(--bad-wash);color:var(--bad)}
+.foot{font-size:12.5px;color:var(--muted)}
+.foot a{color:inherit}
+[hidden]{display:none!important}
+@media (max-width:380px){.facts{grid-template-columns:1fr 1fr}.verdict h2{font-size:26px}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Drying Day</h1>
+    <p class="lede">Enter a UK postcode to see whether it's worth hanging the washing out, and when.</p>
+  </header>
+
+  <form id="f" novalidate>
+    <label class="sr" for="pc">UK postcode</label>
+    <input id="pc" type="text" inputmode="text" autocomplete="postal-code" autocapitalize="characters" spellcheck="false" placeholder="Postcode, e.g. TN22 1AA" maxlength="8">
+    <button class="go" id="go" type="submit">Check drying weather</button>
+  </form>
+
+  <div id="msg" class="msg" role="alert" hidden></div>
+
+  <div id="out" hidden>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <section id="verdict" class="card verdict" aria-live="polite"></section>
+
+      <section class="card">
+        <div class="tabs" id="tabs" role="group" aria-label="Day"></div>
+        <div style="margin-top:14px">
+          <h3 id="stripTitle"></h3>
+          <p class="sub">Taller bars dry faster. Tap an hour for detail.</p>
+          <div class="strip" id="strip"></div>
+          <div class="axis" id="axis"></div>
+          <p class="hour" id="hour"></p>
+          <div class="key"><span class="g">Good</span><span class="o">Fair, slower</span><span>Poor</span><span class="b">Rain or too damp</span><span class="w">Best window</span></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Next three days</h3>
+        <ul class="days" id="days"></ul>
+      </section>
+
+      <p class="foot">Drying score combines how thirsty the air is (vapour pressure deficit), breeze and sunshine, and rules out hours with rain, a 50%+ chance of rain, 90%+ humidity or darkness. Drying times are estimates for a typical spun cotton load. Forecast: <a href="https://open-meteo.com/">Open-Meteo</a>. Postcodes: <a href="https://postcodes.io/">postcodes.io</a>.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ---------- drying model (pure) ---------- */
+var GOOD = 60, OK = 40, LOAD = 180; // LOAD: score-hours needed to dry a typical load
+
+function vpd(t, rh) { // vapour pressure deficit, kPa
+  var es = 0.6108 * Math.exp(17.27 * t / (t + 237.3));
+  return es * (1 - rh / 100);
+}
+
+function scoreHour(h) {
+  if (!h.day) return { score: 0, block: 'dark' };
+  if (h.pr >= 0.1 || h.pp >= 50) return { score: 0, block: 'rain' };
+  if (h.rh >= 90 || h.t - h.dew < 1) return { score: 0, block: 'damp' };
+  if (h.gust >= 45) return { score: 0, block: 'gale' };
+  var air = Math.min(vpd(h.t, h.rh) / 0.8, 1) * 50;
+  var wind = Math.min(h.wind / 12, 1) * 25;
+  if (h.gust > 35) wind -= 10;
+  var sun = Math.min(h.rad / 450, 1) * 25;
+  var s = air + wind + sun;
+  if (h.pp > 20) s *= 1 - (h.pp - 20) / 60;
+  return { score: Math.max(1, Math.round(s)), block: null };
+}
+
+function grade(s) { return s >= GOOD ? 'good' : s >= OK ? 'ok' : 'poor'; }
+
+// hours: array for one day, each {hr, score, past}. Returns windows of 2+ consecutive usable hours, best first.
+function findWindows(hours) {
+  var wins = [], cur = null;
+  hours.forEach(function (h) {
+    if (!h.past && h.score >= OK) {
+      if (cur && h.hr === cur.end) { cur.end = h.hr + 1; cur.total += h.score; cur.n++; }
+      else { cur = { start: h.hr, end: h.hr + 1, total: h.score, n: 1 }; wins.push(cur); }
+    } else cur = null;
+  });
+  wins = wins.filter(function (w) { return w.n >= 2; });
+  wins.forEach(function (w) {
+    w.avg = w.total / w.n;
+    w.need = LOAD / w.avg;               // hours to dry a typical load at this rate
+    w.enough = w.total >= LOAD;
+  });
+  return wins.sort(function (a, b) { return b.total - a.total; });
+}
+/* ---------- end model ---------- */
+
+if (typeof document !== 'undefined') (function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var state = null, dayIx = 0, selHr = null;
+
+  function hhmm(h) { return (h < 10 ? '0' : '') + h + ':00'; }
+  function dur(n) { n = Math.round(n * 2) / 2; return n + (n === 1 ? ' hour' : ' hours'); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function dayName(i, date) {
+    if (i === 0) return 'Today';
+    if (i === 1) return 'Tomorrow';
+    return new Date(date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' });
+  }
+
+  function fail(text) { $('msg').textContent = text; $('msg').hidden = false; $('out').hidden = true; }
+
+  async function lookup(raw) {
+    var pc = raw.replace(/\s+/g, '').toUpperCase();
+    if (!/^[A-Z]{1,2}\d[A-Z\d]?(\d[A-Z]{2})?$/.test(pc)) throw new Error("That doesn't look like a UK postcode. Try the full postcode, like TN22 1AA, or just the first half, like TN22.");
+    var full = pc.length >= 5 && /\d[A-Z]{2}$/.test(pc);
+    var r;
+    try { r = await fetch('https://api.postcodes.io/' + (full ? 'postcodes/' : 'outcodes/') + encodeURIComponent(pc)); }
+    catch (e) { throw new Error("Couldn't reach the postcode service. Check your connection and try again."); }
+    if (r.status === 404) throw new Error("We couldn't find " + raw.trim().toUpperCase() + ". Check the postcode and try again.");
+    if (!r.ok) throw new Error('The postcode service returned an error. Try again in a moment.');
+    var d = (await r.json()).result;
+    var place = full ? [d.admin_ward, d.admin_district].filter(Boolean).join(', ') : (d.admin_district || []).slice(0, 2).join(', ');
+    return { lat: d.latitude, lon: d.longitude, label: (full ? d.postcode : d.outcode) + (place ? ' · ' + place : '') };
+  }
+
+  async function forecast(lat, lon) {
+    var u = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
+      '&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,shortwave_radiation,is_day' +
+      '&current=temperature_2m&wind_speed_unit=mph&timezone=Europe%2FLondon&forecast_days=3';
+    var r;
+    try { r = await fetch(u); } catch (e) { throw new Error("Couldn't reach the forecast service. Check your connection and try again."); }
+    if (!r.ok) throw new Error('The forecast service returned an error. Try again in a moment.');
+    return r.json();
+  }
+
+  function build(fc) {
+    var H = fc.hourly, nowKey = fc.current.time.slice(0, 13), days = [], byDate = {};
+    H.time.forEach(function (t, i) {
+      var date = t.slice(0, 10), hr = +t.slice(11, 13);
+      var h = { hr: hr, t: H.temperature_2m[i], rh: H.relative_humidity_2m[i], dew: H.dew_point_2m[i],
+        pp: H.precipitation_probability[i] || 0, pr: H.precipitation[i] || 0, wind: H.wind_speed_10m[i],
+        gust: H.wind_gusts_10m[i] || 0, rad: H.shortwave_radiation[i] || 0, day: H.is_day[i] === 1,
+        past: t.slice(0, 13) < nowKey, now: t.slice(0, 13) === nowKey };
+      var s = scoreHour(h); h.score = s.score; h.block = s.block;
+      if (!byDate[date]) { byDate[date] = { date: date, hours: [] }; days.push(byDate[date]); }
+      byDate[date].hours.push(h);
+    });
+    days.forEach(function (d) { d.wins = findWindows(d.hours); d.best = d.wins[0] || null; });
+    return days;
+  }
+
+  function whyNot(d) {
+    var left = d.hours.filter(function (h) { return !h.past && h.day; });
+    if (!left.length) return "Daylight has gone, and washing left out overnight picks up dew.";
+    var c = { rain: 0, damp: 0, gale: 0, slow: 0 };
+    left.forEach(function (h) { c[h.block || 'slow']++; });
+    var top = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; })[0];
+    return { rain: 'Rain, or a high chance of it, covers most of the daylight hours.',
+      damp: 'The air is too humid to take up much moisture.',
+      gale: 'Gusts are strong enough to pull washing off the line.',
+      slow: 'It stays dry, but the air is too cool, still and damp for washing to dry properly.' }[top];
+  }
+
+  function winText(w) {
+    return hhmm(w.start) + ' to ' + hhmm(w.end);
+  }
+
+  function renderVerdict() {
+    var d = state.days[dayIx], w = d.best, v = $('verdict'), cls, head, body;
+    var nowHr = (d.hours.filter(function (h) { return h.now; })[0] || {}).hr;
+    if (w) {
+      var inNow = dayIx === 0 && nowHr >= w.start && nowHr < w.end;
+      cls = w.avg >= GOOD ? 'good' : 'ok';
+      if (dayIx === 0) head = inNow ? 'Yes, hang it out now' : 'Yes, from ' + hhmm(w.start);
+      else head = 'Yes, from ' + hhmm(w.start);
+      body = 'Best drying window ' + winText(w) + ', lasting ' + dur(w.end - Math.max(w.start, inNow ? nowHr : w.start)) + '. ' +
+        (w.enough ? 'That is long enough to dry a typical load.' : 'A typical load will come in still damp, so plan to finish it indoors.');
+    } else {
+      cls = 'bad';
+      head = dayIx === 0 ? 'No, not today' : 'No, not ' + dayName(dayIx, d.date).toLowerCase();
+      body = whyNot(d);
+      var next = null;
+      for (var i = 0; i < state.days.length && !next; i++) if (i !== dayIx && state.days[i].best && (i > dayIx || dayIx > 0)) next = i;
+      if (next !== null) body += ' Next chance: ' + dayName(next, state.days[next].date).toLowerCase() + ', ' + winText(state.days[next].best) + '.';
+      else body += ' No drying window in the next three days either.';
+    }
+    var facts = '';
+    if (w) {
+      var hs = d.hours.filter(function (h) { return h.hr >= w.start && h.hr < w.end; });
+      var avg = function (k) { return hs.reduce(function (a, h) { return a + h[k]; }, 0) / hs.length; };
+      var maxPp = Math.max.apply(null, hs.map(function (h) { return h.pp; }));
+      facts = '<div class="facts">' +
+        '<div class="fact"><b>' + dur(w.need).replace(' hours', ' h').replace(' hour', ' h') + '</b><span>est. drying time</span></div>' +
+        '<div class="fact"><b>' + Math.round(avg('t')) + '°C</b><span>' + Math.round(avg('rh')) + '% humidity</span></div>' +
+        '<div class="fact"><b>' + Math.round(avg('wind')) + ' mph</b><span>breeze · ' + maxPp + '% rain risk</span></div></div>';
+    }
+    v.className = 'card verdict ' + cls;
+    v.innerHTML = '<p class="place">' + esc(state.label) + ' · ' + dayName(dayIx, d.date) + '</p><h2>' + head + '</h2><p>' + body + '</p>' + facts;
+  }
+
+  function renderStrip() {
+    var d = state.days[dayIx], w = d.best;
+    var hs = d.hours.filter(function (h) { return h.hr >= 6 && h.hr <= 21; });
+    $('stripTitle').textContent = dayName(dayIx, d.date) + ', hour by hour';
+    $('strip').innerHTML = hs.map(function (h) {
+      var c = h.block === 'dark' ? 'dark' : h.block ? 'block' : grade(h.score);
+      if (w && h.hr >= w.start && h.hr < w.end) c += ' win';
+      if (h.past) c += ' past';
+      if (h.hr === selHr) c += ' sel';
+      var ht = h.block ? (h.block === 'dark' ? 4 : 14) : Math.max(8, h.score);
+      return '<button type="button" class="bar ' + c + '" data-hr="' + h.hr + '" aria-label="' + hhmm(h.hr) + ', drying score ' + h.score + '"><i style="height:' + ht + '%"></i></button>';
+    }).join('');
+    $('axis').innerHTML = hs.map(function (h) { return '<span>' + (h.hr % 3 === 0 ? (h.hr < 10 ? '0' : '') + h.hr : '') + '</span>'; }).join('');
+    var h = hs.filter(function (x) { return x.hr === selHr; })[0];
+    if (!h) { $('hour').textContent = ''; return; }
+    var st = h.block ? { dark: 'Dark', rain: 'Rain likely', damp: 'Too humid', gale: 'Too gusty' }[h.block]
+      : { good: 'Good drying', ok: 'Fair drying', poor: 'Poor drying' }[grade(h.score)] + ' (score ' + h.score + ')';
+    $('hour').innerHTML = '<b>' + hhmm(h.hr) + '</b> · ' + st + ' · ' + Math.round(h.t) + '°C · ' + Math.round(h.rh) + '% humidity · ' +
+      Math.round(h.wind) + ' mph wind · ' + h.pp + '% rain risk';
+  }
+
+  function renderTabs() {
+    $('tabs').innerHTML = state.days.map(function (d, i) {
+      return '<button type="button" data-i="' + i + '" aria-pressed="' + (i === dayIx) + '">' + dayName(i, d.date) + '</button>';
+    }).join('');
+  }
+
+  function renderDays() {
+    $('days').innerHTML = state.days.map(function (d, i) {
+      var w = d.best, c = !w ? 'bad' : w.avg >= GOOD ? 'good' : 'ok';
+      var txt = w ? winText(w) + ' · ' + dur(w.end - w.start) : 'No drying window';
+      return '<li><span><b>' + dayName(i, d.date) + '</b><br><span style="color:var(--muted);font-size:14px">' + txt + '</span></span>' +
+        '<span class="pill ' + c + '">' + (!w ? 'Keep it in' : c === 'good' ? 'Good' : w.enough ? 'Fair' : 'Partial dry') + '</span></li>';
+    }).join('');
+  }
+
+  function pickHour() {
+    var d = state.days[dayIx];
+    var now = d.hours.filter(function (h) { return h.now; })[0];
+    selHr = d.best ? Math.max(d.best.start, now && now.hr < d.best.end ? now.hr : 0) : (now && now.hr >= 6 && now.hr <= 21 ? now.hr : 12);
+  }
+
+  function renderAll() { renderVerdict(); renderTabs(); renderStrip(); renderDays(); }
+
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    dayIx = +b.dataset.i; pickHour(); renderAll();
+  });
+  $('strip').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    selHr = +b.dataset.hr; renderStrip();
+  });
+
+  async function run(raw) {
+    $('msg').hidden = true; $('go').disabled = true; $('go').textContent = 'Checking…';
+    try {
+      var loc = await lookup(raw);
+      var fc = await forecast(loc.lat, loc.lon);
+      state = { label: loc.label, days: build(fc) };
+      dayIx = 0; pickHour(); renderAll();
+      $('out').hidden = false;
+      try { localStorage.setItem('dd-postcode', raw.trim().toUpperCase()); } catch (e) {}
+    } catch (e) { fail(e.message || 'Something went wrong. Try again.'); }
+    $('go').disabled = false; $('go').textContent = 'Check drying weather';
+  }
+
+  $('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = $('pc').value;
+    if (!v.trim()) { fail('Enter a postcode first.'); return; }
+    run(v);
+  });
+
+  try { var saved = localStorage.getItem('dd-postcode'); if (saved) { $('pc').value = saved; run(saved); } } catch (e) {}
+})();
+</script>
+</body>
+</html>
